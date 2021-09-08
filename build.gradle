@@ -10,8 +10,15 @@ repositories {
 }
 
 dependencies {
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
+    implementation group: 'org.igniterealtime.smack', name: 'smack', version: '3.2.1'
+    implementation group: 'org.igniterealtime.smack', name: 'smackx', version: '3.2.1'
+
+    implementation group: 'com.googlecode.windowlicker', name: 'windowlicker-swing', version: 'r268'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.2'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.2'
+    testImplementation 'org.testcontainers:testcontainers:1.16.0'
+    testImplementation 'org.testcontainers:junit-jupiter:1.16.0'
 }
 
 test {
