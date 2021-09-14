@@ -1,5 +1,8 @@
 package com.marshall.goos;
 
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+
 import javax.swing.*;
 
 import org.jivesoftware.smack.Chat;
@@ -9,7 +12,7 @@ import org.jivesoftware.smack.XMPPConnection;
 import org.jivesoftware.smack.XMPPException;
 import org.jivesoftware.smack.packet.Message;
 
-public class Main {
+public class Main implements AuctionEventListener {
     public static final String MAIN_WINDOW_NAME = "Auction Sniper Main";
 
     private static final int ARG_HOSTNAME = 0;
@@ -21,6 +24,9 @@ public class Main {
     public static final String AUCTION_RESOURCE = "Auction";
     public static final String ITEM_ID_AS_LOGIN = "auction-%s";
     public static final String AUCTION_ID_FORMAT = ITEM_ID_AS_LOGIN + "@%s/" + AUCTION_RESOURCE;
+
+    public static final String JOIN_COMMAND_FORMAT = "JOIN %s";
+    public static final String BID_COMMAND_FORMAT = "BID %s";
 
     private MainWindow ui;
     @SuppressWarnings("unused") private Chat notToBeGCd;
@@ -36,21 +42,37 @@ public class Main {
     }
 
     private void joinAuction(XMPPConnection connection, String itemId) throws XMPPException {
-        final var chat = connection.getChatManager().createChat(auctionId(itemId, connection), new MessageListener() {
-            @Override
-            public void processMessage(Chat chat, Message message) {
-                SwingUtilities.invokeLater(new Runnable() {
-                    @Override
-                    public void run() {
-                        ui.showStatus(SniperStatus.LOST.toString());
-                    }
-                });
-            }
-        });
+        disconnectWhenUICloses(connection);
+
+        final var chat = connection.getChatManager().createChat(auctionId(itemId, connection),
+                new AuctionMessageTranslator(this));
 
         this.notToBeGCd = chat;
 
-        chat.sendMessage(new Message());
+        chat.sendMessage(JOIN_COMMAND_FORMAT);
+    }
+
+    public void auctionClosed() {
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                ui.showStatus(SniperStatus.LOST.toString());
+            }
+        });
+    }
+
+    @Override
+    public void currentPrice(int price, int increment) {
+        throw new RuntimeException("Not implemented");
+    }
+
+    private void disconnectWhenUICloses(final XMPPConnection connection) {
+        ui.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosed(WindowEvent e) {
+                connection.disconnect();
+            }
+        });
     }
 
     private static XMPPConnection connection(String hostname, int port, String username, String password) throws XMPPException {

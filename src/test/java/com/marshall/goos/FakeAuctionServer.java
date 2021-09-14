@@ -3,7 +3,10 @@ package com.marshall.goos;
 import static com.marshall.goos.Main.AUCTION_RESOURCE;
 import static com.marshall.goos.Main.ITEM_ID_AS_LOGIN;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.anything;
+import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasProperty;
+import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
@@ -45,12 +48,21 @@ public class FakeAuctionServer {
         });
     }
 
-    public void hasReceivedJoinRequestFromSniper() throws InterruptedException {
-        messageListener.receivesAMessage();
+    public void reportPrice(int price, int increment, String bidder)  throws XMPPException {
+        currentChat.sendMessage(String.format("SOLVersion: 1.1; Event: PRICE; CurrentPrice: %d; Increment: %d; " +
+                "Bidder: %s;", price, increment, bidder));
+    }
+
+    public void hasReceivedJoinRequestFrom(String sniperId) throws InterruptedException {
+        receivesAMessageMatching(sniperId, equalTo(Main.JOIN_COMMAND_FORMAT));
+    }
+
+    public void hasReceivedBid(int bid, String sniperId) throws InterruptedException {
+        receivesAMessageMatching(sniperId, equalTo(String.format(Main.BID_COMMAND_FORMAT, bid)));
     }
 
     public void announceClosed() throws XMPPException {
-        currentChat.sendMessage(new Message());
+        currentChat.sendMessage("SOLVersion: 1.1; Event: CLOSE;");
     }
 
     public void stop() {
@@ -59,6 +71,11 @@ public class FakeAuctionServer {
 
     public String getItemId() {
         return itemId;
+    }
+
+    private void receivesAMessageMatching(String sniperId, Matcher<? super String> messageMatcher) throws InterruptedException {
+        messageListener.receivesAMessage(messageMatcher);
+        assertThat(currentChat.getParticipant(), equalTo(sniperId));
     }
 
     public class SingleMessageListener implements MessageListener {
@@ -71,6 +88,12 @@ public class FakeAuctionServer {
 
         public void receivesAMessage() throws InterruptedException {
             assertNotNull(messages.poll(5, TimeUnit.SECONDS));
+        }
+
+        public void receivesAMessage(Matcher<? super String> messageMatcher) throws InterruptedException {
+            final Message message = messages.poll(5, TimeUnit.SECONDS);
+            assertThat("Message", message, is(notNullValue()));
+            assertThat(message.getBody(), messageMatcher);
         }
     }
 }
